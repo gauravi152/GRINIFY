@@ -1,0 +1,160 @@
+{
+    "users": {
+        "test1_0b2a@example.com": {
+            "name": "Updated User One",
+            "email": "test1_0b2a@example.com",
+            "location": "New York",
+            "gender": null,
+            "birthdate": null,
+            "points": 1240,
+            "scans": 42,
+            "rank": "Gold Explorer",
+            "history": [
+                {
+                    "date": "2024-03-20",
+                    "item": "Plastic Bottle",
+                    "points": 10
+                },
+                {
+                    "date": "2024-03-19",
+                    "item": "Paper Box",
+                    "points": 5
+                },
+                {
+                    "date": "2024-03-18",
+                    "item": "Metal Can",
+                    "points": 10
+                }
+            ],
+            "avatar": "https://ui-avatars.com/api/?name=User+One&background=8A9A5B&color=fff"
+        },
+        "test2_0c45@example.com": {
+            "name": "User Two",
+            "email": "test2_0c45@example.com",
+            "location": "Earth",
+            "gender": "Not Specified",
+            "birthdate": "2000-01-01",
+            "points": 1240,
+            "scans": 42,
+            "rank": "Gold Explorer",
+            "history": [
+                {
+                    "date": "2024-03-20",
+                    "item": "Plastic Bottle",
+                    "points": 10
+                },
+                {
+                    "date": "2024-03-19",
+                    "item": "Paper Box",
+                    "points": 5
+                },
+                {
+                    "date": "2024-03-18",
+                    "item": "Metal Can",
+                    "points": 10
+                }
+            ],
+            "avatar": "https://ui-avatars.com/api/?name=User+Two&background=8A9A5B&color=fff"
+        },
+        "gauravimestry0@gmail.com": {
+            "name": "Gauravi Mestry",
+            "email": "gauravimestry0@gmail.com",
+            "location": "Earth",
+            "gender": "Not Specified",
+            "birthdate": "2000-01-01",
+            "points": 1240,
+            "scans": 42,
+            "rank": "Gold Explorer",
+            "history": [
+                {
+                    "date": "2024-03-20",
+                    "item": "Plastic Bottle",
+                    "points": 10
+                },
+                {
+                    "date": "2024-03-19",
+                    "item": "Paper Box",
+                    "points": 5
+                },
+                {
+                    "date": "2024-03-18",
+                    "item": "Metal Can",
+                    "points": 10
+                }
+            ],
+            "avatar": "https://ui-avatars.com/api/?name=Grinify+Member&background=8A9A5B&color=fff",
+            "password": "123456"
+        },
+        "test_analytics@example.com": {
+            "name": "Analytics Tester",
+            "email": "test_analytics@example.com",
+            "location": "Earth",
+            "gender": "Not Specified",
+            "birthdate": "2000-01-01",
+            "points": 1240,
+            "scans": 42,
+            "rank": "Gold Explorer",
+            "history": [
+                {
+                    "date": "2024-03-20",
+                    "item": "Plastic Bottle",
+                    "points": 10
+                },
+                {
+                    "date": "2024-03-19",
+                    "item": "Paper Box",
+                    "points": 5
+                },
+                {
+                    "date": "2024-03-18",
+                    "item": "Metal Can",
+                    "points": 10
+                }
+            ],
+            "avatar": "https://ui-avatars.com/api/?name=Analytics+Tester&background=8A9A5B&color=fff"
+        },
+        "testuser@example.com": {
+            "name": "Test User",
+            "email": "testuser@example.com",
+            "password": "password",
+            "location": "Earth",
+            "gender": "Not Specified",
+            "birthdate": "2000-01-01",
+            "points": 1240,
+            "scans": 42,
+            "rank": "Gold Explorer",
+            "history": [
+                {
+                    "date": "2024-03-20",
+                    "item": "Plastic Bottle",
+                    "points": 10
+                },
+                {
+                    "date": "2024-03-19",
+                    "item": "Paper Box",
+                    "points": 5
+                },
+                {
+                    "date": "2024-03-18",
+                    "item": "Metal Can",
+                    "points": 10
+                }
+            ],
+            "avatar": "https://ui-avatars.com/api/?name=Test+User&background=8A9A5B&color=fff"
+        }
+    },
+    "sessions": {
+        "mock_token_2544971e": "test1_0b2a@example.com",
+        "mock_token_ca8878cf": "test2_0c45@example.com",
+        "mock_token_b2c02fe0": "gauravimestry0@gmail.com",
+        "mock_token_7454568a": "gauravimestry0@gmail.com",
+        "mock_token_a1270dfc": "gauravimestry0@gmail.com",
+        "mock_token_1b91684c": "test_analytics@example.com",
+        "mock_token_be1a4486": "test_analytics@example.com",
+        "mock_token_85e8420c": "test_analytics@example.com",
+        "mock_token_bd9560f8": "gauravimestry0@gmail.com",
+        "mock_token_fc4d077e": "gauravimestry0@gmail.com",
+        "token_0195d853": "testuser@example.com",
+        "token_8e0b3b99": "gauravimestry0@gmail.com"
+    }
+}
