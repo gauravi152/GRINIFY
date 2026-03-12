@@ -83,7 +83,7 @@
                 }
             ],
             "avatar": "https://ui-avatars.com/api/?name=Grinify+Member&background=8A9A5B&color=fff",
-            "password": "123456"
+            "password": "$2b$12$oDAHMHX7lAB8HesoENz6..XwIpAnTpZWAE6uL8Nk2UJJ34dsN.HUu"
         },
         "test_analytics@example.com": {
             "name": "Analytics Tester",
@@ -116,7 +116,7 @@
         "testuser@example.com": {
             "name": "Test User",
             "email": "testuser@example.com",
-            "password": "password",
+            "password": "$2b$12$vWwBMsN.TlZbsfArlvgOLO0BDKpq/1MmljyiSHmL8YeGXjjGTNqkW",
             "location": "Earth",
             "gender": "Not Specified",
             "birthdate": "2000-01-01",
@@ -141,6 +141,75 @@
                 }
             ],
             "avatar": "https://ui-avatars.com/api/?name=Test+User&background=8A9A5B&color=fff"
+        },
+        "tester@example.com": {
+            "name": "Pipeline Tester",
+            "email": "tester@example.com",
+            "password": "$2b$12$roEr4sW1xuBw0gP375QNROm/RA.lHDbFXMjpoUcPPs8edrTgoRHgG",
+            "location": "Earth",
+            "gender": "Not Specified",
+            "birthdate": "2000-01-01",
+            "points": 1280,
+            "scans": 50,
+            "rank": "Gold Explorer",
+            "history": [
+                {
+                    "date": "2024-03-21",
+                    "item": "Plastic",
+                    "points": 5
+                },
+                {
+                    "date": "2024-03-21",
+                    "item": "Plastic",
+                    "points": 5
+                },
+                {
+                    "date": "2024-03-21",
+                    "item": "Plastic",
+                    "points": 5
+                },
+                {
+                    "date": "2024-03-21",
+                    "item": "Plastic",
+                    "points": 5
+                },
+                {
+                    "date": "2024-03-21",
+                    "item": "Plastic",
+                    "points": 5
+                },
+                {
+                    "date": "2024-03-21",
+                    "item": "Plastic",
+                    "points": 5
+                },
+                {
+                    "date": "2024-03-21",
+                    "item": "Metal",
+                    "points": 5
+                },
+                {
+                    "date": "2024-03-21",
+                    "item": "Metal",
+                    "points": 5
+                },
+                {
+                    "date": "2024-03-20",
+                    "item": "Plastic Bottle",
+                    "points": 10
+                },
+                {
+                    "date": "2024-03-19",
+                    "item": "Paper Box",
+                    "points": 5
+                },
+                {
+                    "date": "2024-03-18",
+                    "item": "Metal Can",
+                    "points": 10
+                }
+            ],
+            "avatar": "https://ui-avatars.com/api/?name=Pipeline+Tester&background=8A9A5B&color=fff"
         }
     },
     "sessions": {
@@ -155,6 +224,8 @@
         "mock_token_bd9560f8": "gauravimestry0@gmail.com",
         "mock_token_fc4d077e": "gauravimestry0@gmail.com",
         "token_0195d853": "testuser@example.com",
-        "token_8e0b3b99": "gauravimestry0@gmail.com"
+        "token_8e0b3b99": "gauravimestry0@gmail.com",
+        "token_6da10d29": "gauravimestry0@gmail.com",
+        "token_ebce88f8": "gauravimestry0@gmail.com"
     }
 }

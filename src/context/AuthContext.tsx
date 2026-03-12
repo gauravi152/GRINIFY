@@ -38,12 +38,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const token = localStorage.getItem('grinify_token');
             if (token) {
                 try {
-                    const response = await fetch(`${API_BASE_URL}/user/data`, {
+                    const response = await fetch(`${API_BASE_URL}/user/profile`, {
                         headers: {
                             'Authorization': `Bearer ${token}`
                         }
                     });
-                    if (!response.ok) throw new Error('Failed to hydrate session');
+                    if (!response.ok) {
+                        if (response.status === 401) {
+                            throw new Error('Session expired');
+                        }
+                        throw new Error('Failed to fetch user profile');
+                    }
                     const data = await response.json();
                     if (data.status === 'success') {
                         setUser(data.user);
@@ -71,8 +76,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Authentication failed');
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `Login failed (${response.status})`);
             }
 
             const data = await response.json();
@@ -85,7 +90,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }
         } catch (err) {
             console.error("Login failed:", err);
-            throw err;
+            const errorMessage = err instanceof Error ? err.message : 'Failed to connect to server. Please ensure the backend is running.';
+            throw new Error(errorMessage);
         } finally {
             setIsLoading(false);
         }
@@ -101,8 +107,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Signup failed');
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `Signup failed (${response.status})`);
             }
 
             const data = await response.json();
@@ -115,7 +121,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }
         } catch (err) {
             console.error("Signup failed:", err);
-            throw err;
+            const errorMessage = err instanceof Error ? err.message : 'Failed to connect to server. Please ensure the backend is running.';
+            throw new Error(errorMessage);
         } finally {
             setIsLoading(false);
         }

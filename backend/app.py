@@ -12,8 +12,47 @@ import os
 import json
 import uuid
 import shutil
+import logging
+from datetime import datetime, timedelta
+from jose import JWTError, jwt
+import bcrypt
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Security configuration
+SECRET_KEY = "grinify_secret_key_change_me_in_production"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 24 hours
 
 app = FastAPI(title="Grinify AI Backend")
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+        "http://localhost:5175",
+        "http://127.0.0.1:5175",
+        "http://localhost:5176",
+        "http://127.0.0.1:5176",
+        "http://localhost:5177",
+        "http://127.0.0.1:5177",
+        "http://localhost:5178",
+        "http://127.0.0.1:5178",
+        "http://localhost:5179",
+        "http://127.0.0.1:5179",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Ensure directories exist
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
@@ -44,11 +83,33 @@ class UpdateProfileRequest(BaseModel):
 # File-based Persistence logic
 DB_PATH = os.path.join(os.path.dirname(__file__), "users.json")
 
+def get_password_hash(password):
+    # bcrypt requires bytes
+    pwd_bytes = password.encode('utf-8')
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(pwd_bytes, salt)
+    return hashed.decode('utf-8')
+
+def verify_password(plain_password, hashed_password):
+    pwd_bytes = plain_password.encode('utf-8')
+    hashed_pwd_bytes = hashed_password.encode('utf-8')
+    return bcrypt.checkpw(pwd_bytes, hashed_pwd_bytes)
+
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
 def get_initial_user(name, email, password):
     return {
         "name": name,
         "email": email,
-        "password": password,
+        "password": get_password_hash(password),
         "location": "Earth",
         "gender": "Not Specified",
         "birthdate": "2000-01-01",
@@ -107,9 +168,15 @@ def get_current_user(request: Request):
         return None
     
     token = auth_header.split(" ")[1]
-    email = user_db["sessions"].get(token)
-    
-    if not email or email not in user_db["users"]:
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            return None
+    except JWTError:
+        return None
+
+    if email not in user_db["users"]:
         return None
         
     return user_db["users"][email]
@@ -118,56 +185,45 @@ def get_current_user(request: Request):
 def debug_db():
     return user_db
 
-# Enable CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000", "http://localhost:5174"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # Device Configuration
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Initialize ResNet18 model
-CLASS_NAMES = ["Glass", "Metal", "Paper", "Plastic", "Organic"]
-model = get_model() # This now returns ResNet18 with ImageNet weights
+model = get_model(num_classes=6)
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "waste_model.pth")
+MAPPING_PATH = os.path.join(os.path.dirname(__file__), "class_mapping.json")
+
+# Load Class Mapping
+class_mapping = {}
+if os.path.exists(MAPPING_PATH):
+    try:
+        with open(MAPPING_PATH, 'r') as f:
+            class_mapping = json.load(f)
+        logger.info(f"Loaded class mapping from {MAPPING_PATH}")
+    except Exception as e:
+        logger.error(f"Failed to load class mapping: {e}")
+
+if os.path.exists(MODEL_PATH):
+    try:
+        model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
+        logger.info(f"Loaded model weights from {MODEL_PATH}")
+    except Exception as e:
+        logger.error(f"Failed to load model weights: {e}")
+else:
+    logger.warning(f"No model weights found at {MODEL_PATH}, using uninitialized model.")
+
 model.to(device)
 model.eval()
 
-with open(os.path.join(os.path.dirname(__file__), "imagenet_class_index.json"), "r") as f:
-    imagenet_mapping = json.load(f)
-
-# Helper function to categorize ImageNet labels to our 5 classes
-def map_imagenet_to_waste(imagenet_label: str) -> str:
-    label = imagenet_label.lower()
-    
-    # Plastic mappings
-    if any(word in label for word in ["bottle", "bag", "cup", "plastic", "bucket", "container", "jug", "nipple", "pacifier", "rubber_eraser"]):
-        return "Plastic"
-    # Metal mappings
-    elif any(word in label for word in ["can", "tin", "aluminum", "spoon", "fork", "knife", "pot", "pan", "bucket", "safe", "nail", "screw", "padlock", "chain"]):
-        return "Metal"
-    # Glass mappings
-    elif any(word in label for word in ["glass", "jar", "goblet", "wine_bottle", "beer_glass", "beaker", "cup"]):
-        return "Glass"
-    # Paper/Cardboard mappings
-    elif any(word in label for word in ["paper", "cardboard", "box", "envelope", "book", "magazine", "newspaper", "tissue", "carton"]):
-        return "Paper"
-    # Organic mappings
-    elif any(word in label for word in ["apple", "banana", "orange", "lemon", "strawberry", "pizza", "burger", "hotdog", "food", "vegetable", "fruit", "mushroom", "broccoli", "cauliflower"]):
-        return "Organic"
-    
-    # Default fallback
-    return "Plastic"  # Most common fall back for packaging
-
+# We no longer need imagenet_class_index.json or map_imagenet_to_waste()
 
 @app.get("/")
 def read_root():
     return {"message": "Grinify AI Backend is running!"}
 
 @app.get("/user/data")
+@app.get("/user/profile")
 async def get_user_data(request: Request):
     user = get_current_user(request)
     if not user:
@@ -183,21 +239,26 @@ async def auth_signup(request: AuthSignupRequest):
     try:
         email = request.email
         if email in user_db["users"]:
+            logger.warning(f"Signup failed: Email {email} already registered")
             return JSONResponse(status_code=400, content={"status": "error", "message": "Email already registered"})
         
         user_db["users"][email] = get_initial_user(request.name, email, request.password)
         
-        # Create new session
-        token = "token_" + str(uuid.uuid4())[:8]
-        user_db["sessions"][token] = email
+        # Create new session (JWT)
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        token = create_access_token(
+            data={"sub": email}, expires_delta=access_token_expires
+        )
         
         save_db(user_db)
+        logger.info(f"User signup successful: {email}")
         return {
             "status": "success",
             "token": token,
             "user": user_db["users"][email]
         }
     except Exception as e:
+        logger.error(f"Signup error: {str(e)}")
         return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
 
 @app.post("/auth/login")
@@ -207,30 +268,42 @@ async def auth_login(request: AuthLoginRequest):
         password = request.password
         
         if email not in user_db["users"]:
+            logger.warning(f"Login failed: Invalid email {email}")
             return JSONResponse(status_code=401, content={"status": "error", "message": "Invalid email or password"})
         
         user = user_db["users"][email]
-        # In a real app we'd hash passwords, but for now we'll do direct comparison
-        # Handle cases where users in users.json might not have passwords yet
         stored_password = user.get("password")
-        if stored_password and stored_password != password:
+        
+        # Handle cases where users in users.json might not have hashed passwords yet (legacy)
+        is_valid = False
+        if stored_password:
+            if stored_password.startswith("$2b$") or stored_password.startswith("$2a$"):
+                is_valid = verify_password(password, stored_password)
+            else:
+                # Legacy plain text comparison and migrate to hash
+                if stored_password == password:
+                    is_valid = True
+                    user["password"] = get_password_hash(password)
+                    save_db(user_db)
+        
+        if not is_valid:
+             logger.warning(f"Login failed: Invalid password for {email}")
              return JSONResponse(status_code=401, content={"status": "error", "message": "Invalid email or password"})
         
-        # If user exists but has no password (legacy), set it now
-        if not stored_password:
-            user["password"] = password
-            
-        # Create new session
-        token = "token_" + str(uuid.uuid4())[:8]
-        user_db["sessions"][token] = email
+        # Create access token (JWT)
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        token = create_access_token(
+            data={"sub": email}, expires_delta=access_token_expires
+        )
         
-        save_db(user_db)
+        logger.info(f"User login successful: {email}")
         return {
             "status": "success",
             "token": token,
             "user": user
         }
     except Exception as e:
+        logger.error(f"Login error: {str(e)}")
         return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
 
 @app.put("/profile")
@@ -292,8 +365,8 @@ async def upload_image(request: Request, file: UploadFile = File(...)):
 
 @app.post("/predict")
 async def predict(request: Request, file: UploadFile = File(...)):
-    if not file.content_type.startswith("image/"):
-        return JSONResponse(status_code=400, content={"status": "error", "message": "Invalid file type"})
+    if not file or not file.content_type or not file.content_type.startswith("image/"):
+        return JSONResponse(status_code=400, content={"status": "error", "message": "Invalid file type or no file provided"})
 
     try:
         image_bytes = await file.read()
@@ -305,17 +378,39 @@ async def predict(request: Request, file: UploadFile = File(...)):
             probabilities = F.softmax(outputs, dim=1)
             confidence, predicted = torch.max(probabilities, 1)
             
-        imagenet_idx = str(predicted.item())
-        imagenet_label = imagenet_mapping.get(imagenet_idx, ["", "unknown"])[1]
+        predicted_idx = predicted.item()
+        conf_score = confidence.item()
         
-        category = map_imagenet_to_waste(imagenet_label)
-        # ResNet is very confident on ImageNet, we slightly scale or just return it directly
-        conf_score = confidence.item() * 100
-        print(f"ImageNet detected: {imagenet_label} -> Mapped to: {category} ({conf_score:.2f}%)")
+        if conf_score < 0.5:
+             logger.info(f"Low confidence prediction: {conf_score:.2f}. Returning uncertain.")
+             return {
+                "status": "success",
+                "category": "Uncertain waste classification",
+                "confidence": round(conf_score * 100, 2),
+                "points": 0,
+                "instructions": "Please try scanning again with better lighting or a different angle.",
+                "recyclable": False
+            }
+
+        raw_category = class_mapping.get(str(predicted_idx), "unknown")
+        
+        # Map to frontend expected categories
+        category_map = {
+            'cardboard': 'Cardboard',
+            'glass': 'Glass',
+            'metal': 'Metal',
+            'paper': 'Paper',
+            'plastic': 'Plastic',
+            'trash': 'Organic'
+        }
+        category = category_map.get(raw_category, raw_category.capitalize())
+        
+        conf_percent = conf_score * 100
+        logger.info(f"Model detected: {raw_category} -> Mapped to UI Category: {category} ({conf_percent:.2f}%)")
         
         user = get_current_user(request)
         if user:
-            points = 10 if conf_score > 70 else 5
+            points = 10 if conf_percent > 70 else 5
             user["points"] += points
             user["scans"] += 1
             user["history"].insert(0, {
@@ -344,8 +439,8 @@ async def predict(request: Request, file: UploadFile = File(...)):
         return {
             "status": "success",
             "category": category,
-            "confidence": round(conf_score, 2),
-            "points": 10 if conf_score > 70 else 5,
+            "confidence": round(conf_percent, 2),
+            "points": 10 if conf_percent > 70 else 5,
             "instructions": instructions,
             "recyclable": recyclable
         }
