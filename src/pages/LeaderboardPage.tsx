@@ -79,28 +79,37 @@ export const LeaderboardPage: React.FC = () => {
         return () => clearInterval(interval);
     }, []);
 
-    // Ensure current user is in the list visually
-    const isUserInList = Boolean(currentUser?.name && leaderboardData.some(u => u.name === currentUser.name));
-    const displayData = [...leaderboardData];
-    
-    if (!isUserInList && currentUser?.name) {
-        // Find their virtual rank based on points
-        const userPoints = currentUser.points ?? 0;
-        const virtualRank = displayData.filter(u => (u.points ?? 0) >= userPoints).length + 1;
-        
-        displayData.push({
-            rank: virtualRank,
-            name: currentUser.name,
-            points: userPoints,
-            scans: currentUser.scans ?? 0,
-            impact_level: currentUser.rank || 'Explorer',
-            avatar: currentUser.avatar || null
+    const displayData = React.useMemo(() => {
+        const data = [...leaderboardData];
+
+        if (!currentUser?.name) return data;
+
+        const isUserInList = data.some(u => u.name === currentUser.name);
+
+        if (!isUserInList) {
+            const userPoints = currentUser.points ?? 0;
+
+            const virtualRank =
+                data.filter(u => (u.points ?? 0) >= userPoints).length + 1;
+
+            data.push({
+                rank: virtualRank,
+                name: currentUser.name ?? "Unknown",
+                points: userPoints,
+                scans: currentUser.scans ?? 0,
+                impact_level: currentUser.rank || "Explorer",
+                avatar: currentUser.avatar || null
+            });
+        }
+
+        data.sort((a, b) => (b.points ?? 0) - (a.points ?? 0));
+
+        data.forEach((u, i) => {
+            u.rank = i + 1;
         });
-        
-        displayData.sort((a, b) => (b.points ?? 0) - (a.points ?? 0));
-        // re-rank
-        displayData.forEach((u, i) => u.rank = i + 1);
-    }
+
+        return data;
+    }, [leaderboardData, currentUser]);
 
     const podiumOrder = [1, 0, 2]; // Rank indices: 2, 1, 3
 
@@ -130,7 +139,7 @@ export const LeaderboardPage: React.FC = () => {
                     const isRank1 = user.rank === 1;
                     const isRank2 = user.rank === 2;
                     const isRank3 = user.rank === 3;
-                    const isMe = user.name === currentUser?.name;
+                    const isMe = user?.name === currentUser?.name;
 
                     let rankIcon = null;
                     if (isRank1) rankIcon = '🥇';
@@ -226,7 +235,7 @@ export const LeaderboardPage: React.FC = () => {
 
                 <div className="divide-y divide-gray-50">
                     {displayData.slice(3).map((user, index) => {
-                        const isMe = user.name === currentUser?.name;
+                        const isMe = user?.name === currentUser?.name;
                         return (
                             <motion.div
                                 key={user.name}
