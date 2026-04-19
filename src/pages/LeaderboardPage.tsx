@@ -82,19 +82,25 @@ export const LeaderboardPage: React.FC = () => {
     // Ensure current user is in the list visually
     const isUserInList = leaderboardData.some(u => u.name === currentUser?.name);
     const displayData = [...leaderboardData];
-    if (!isUserInList && currentUser) {
-        // Find their virtual rank based on points
-        const virtualRank = displayData.filter(u => u.points >= currentUser.points).length + 1;
-        displayData.push({
-            rank: virtualRank,
-            name: currentUser.name,
-            points: currentUser.points || 0,
-            scans: currentUser.scans || 0,
-            impact_level: currentUser.rank || 'Explorer',
-            avatar: currentUser.avatar || null
-        });
-        displayData.sort((a, b) => b.points - a.points);
-        // re-rank
+
+if (!isUserInList && currentUser) {
+  // Find their virtual rank based on points
+  const virtualRank =
+    displayData.filter(
+      (u) => (u.points ?? 0) >= (currentUser?.points ?? 0)
+    ).length + 1;
+
+  displayData.push({
+    rank: virtualRank,
+    name: currentUser?.name ?? "Unknown",
+    points: currentUser?.points ?? 0,
+    scans: currentUser?.scans ?? 0,
+  });
+}
+
+displayData.sort((a, b) => (b.points ?? 0) - (a.points ?? 0));
+
+// re-rank
         displayData.forEach((u, i) => u.rank = i + 1);
     }
 
