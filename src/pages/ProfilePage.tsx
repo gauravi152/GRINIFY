@@ -34,6 +34,19 @@ export const ProfilePage: React.FC = () => {
     }, [user, isEditing]);
 
     const handleSave = async () => {
+        // Validation: Name cannot be empty
+        if (!formData.name || !formData.name.trim()) {
+            alert("Name cannot be empty");
+            return;
+        }
+        
+        // Validation: Email format valid
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (formData.email && !emailRegex.test(formData.email)) {
+            alert("Email format invalid");
+            return;
+        }
+
         setIsSaving(true);
         try {
             await updateProfile({
@@ -47,7 +60,7 @@ export const ProfilePage: React.FC = () => {
             setTimeout(() => setSaveSuccess(false), 3000);
             setIsEditing(false);
         } catch (err) {
-            alert("Failed to update profile. Please try again.");
+            alert("Failed to update profile");
         } finally {
             setIsSaving(false);
         }
@@ -139,7 +152,7 @@ export const ProfilePage: React.FC = () => {
                                 />
                             </div>
                             <div className="space-y-1">
-                                <label className="text-xs font-semibold text-text-light uppercase tracking-wider">Location</label>
+                                <label className="text-xs font-semibold text-text-light uppercase tracking-wider">Bio / short description</label>
                                 <input
                                     type="text"
                                     value={formData.location}
@@ -231,7 +244,7 @@ export const ProfilePage: React.FC = () => {
                                     animate={{ opacity: 1, scale: 1 }}
                                     className="text-green-600 text-sm font-semibold text-center md:text-left"
                                 >
-                                    Changes saved successfully!
+                                    Profile updated successfully
                                 </motion.p>
                             )}
                         </>

@@ -1,4 +1,5 @@
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Query, Request
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Query, Request, Depends
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -28,7 +29,11 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 24 hours
 
 app = FastAPI(title="Grinify AI Backend")
 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
+
 # Configure CORS
+# We explicitly allow both localhost and 127.0.0.1 on common development ports
+# to ensure the frontend can always connect regardless of how it's accessed.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -36,22 +41,12 @@ app.add_middleware(
         "http://127.0.0.1:5173",
         "http://localhost:5174",
         "http://127.0.0.1:5174",
-        "http://localhost:5175",
-        "http://127.0.0.1:5175",
-        "http://localhost:5176",
-        "http://127.0.0.1:5176",
-        "http://localhost:5177",
-        "http://127.0.0.1:5177",
-        "http://localhost:5178",
-        "http://127.0.0.1:5178",
-        "http://localhost:5179",
-        "http://127.0.0.1:5179",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers including Authorization
 )
 
 # Ensure directories exist
@@ -116,10 +111,15 @@ def get_initial_user(name, email, password):
         "points": 1240,
         "scans": 42,
         "rank": "Gold Explorer",
+        "challenges": {
+            "daily": {"target": 3, "progress": 0, "completed": False, "last_updated": datetime.utcnow().strftime("%Y-%m-%d")},
+            "weekly": {"target": 15, "progress": 0, "completed": False, "last_updated_week": datetime.utcnow().isocalendar()[1]},
+            "monthly": {"target": 50, "progress": 0, "completed": False, "last_updated_month": datetime.utcnow().month}
+        },
         "history": [
-            {"date": "2024-03-20", "item": "Plastic Bottle", "points": 10},
-            {"date": "2024-03-19", "item": "Paper Box", "points": 5},
-            {"date": "2024-03-18", "item": "Metal Can", "points": 10}
+            {"date": "2024-03-20", "item": "Plastic", "points": 10},
+            {"date": "2024-03-19", "item": "Paper", "points": 5},
+            {"date": "2024-03-18", "item": "Metal", "points": 10}
         ],
         "avatar": f"https://ui-avatars.com/api/?name={name.replace(' ', '+')}&background=8A9A5B&color=fff"
     }
@@ -145,6 +145,15 @@ def load_db():
                 
                 if "sessions" not in data:
                     data["sessions"] = {}
+                
+                # Migrate challenges for existing users
+                for user_email, user_data in data["users"].items():
+                    if "challenges" not in user_data:
+                        user_data["challenges"] = {
+                            "daily": {"target": 3, "progress": 0, "completed": False, "last_updated": datetime.utcnow().strftime("%Y-%m-%d")},
+                            "weekly": {"target": 15, "progress": 0, "completed": False, "last_updated_week": datetime.utcnow().isocalendar()[1]},
+                            "monthly": {"target": 50, "progress": 0, "completed": False, "last_updated_month": datetime.utcnow().month}
+                        }
                     
                 return data
         except Exception as e:
@@ -162,24 +171,31 @@ def save_db(db):
 # Global database instance
 user_db = load_db()
 
-def get_current_user(request: Request):
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        return None
-    
-    token = auth_header.split(" ")[1]
+def get_current_user(token: str = Depends(oauth2_scheme)):
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
-            return None
+            raise HTTPException(status_code=401, detail="Invalid token")
+        if email not in user_db["users"]:
+            raise HTTPException(status_code=401, detail="User not found")
+        return user_db["users"][email]
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token invalid or expired")
+
+def get_current_user_optional(token: str = Depends(oauth2_scheme)):
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email and email in user_db["users"]:
+            return user_db["users"][email]
+        return None
     except JWTError:
         return None
-
-    if email not in user_db["users"]:
-        return None
-        
-    return user_db["users"][email]
 
 @app.get("/debug/db")
 def debug_db():
@@ -220,15 +236,20 @@ model.eval()
 
 @app.get("/")
 def read_root():
+    """Root endpoint to verify backend is reachable."""
     return {"message": "Grinify AI Backend is running!"}
+
+@app.get("/health")
+def health_check():
+    """
+    Health check endpoint for frontend to verify API connection stability.
+    Returns: {"status": "ok"}
+    """
+    return {"status": "ok"}
 
 @app.get("/user/data")
 @app.get("/user/profile")
-async def get_user_data(request: Request):
-    user = get_current_user(request)
-    if not user:
-        return JSONResponse(status_code=401, content={"status": "error", "message": "Not authenticated"})
-    
+async def get_user_data(user: dict = Depends(get_current_user)):
     return {
         "status": "success",
         "user": user
@@ -307,10 +328,7 @@ async def auth_login(request: AuthLoginRequest):
         return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
 
 @app.put("/profile")
-async def update_profile(request: UpdateProfileRequest, r: Request):
-    user = get_current_user(r)
-    if not user:
-        return JSONResponse(status_code=401, content={"status": "error", "message": "Not authenticated"})
+async def update_profile(request: UpdateProfileRequest, user: dict = Depends(get_current_user)):
     
     try:
         old_email = user["email"]
@@ -338,10 +356,7 @@ async def update_profile(request: UpdateProfileRequest, r: Request):
         return JSONResponse(status_code=400, content={"status": "error", "message": str(e)})
 
 @app.post("/profile/upload-image")
-async def upload_image(request: Request, file: UploadFile = File(...)):
-    user = get_current_user(request)
-    if not user:
-        return JSONResponse(status_code=401, content={"status": "error", "message": "Not authenticated"})
+async def upload_image(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
 
     try:
         file_extension = os.path.splitext(file.filename)[1]
@@ -364,7 +379,7 @@ async def upload_image(request: Request, file: UploadFile = File(...)):
         return JSONResponse(status_code=500, content={"status": "error", "message": f"Upload failed: {str(e)}"})
 
 @app.post("/predict")
-async def predict(request: Request, file: UploadFile = File(...)):
+async def predict(file: UploadFile = File(...), user: dict | None = Depends(get_current_user_optional)):
     if not file or not file.content_type or not file.content_type.startswith("image/"):
         return JSONResponse(status_code=400, content={"status": "error", "message": "Invalid file type or no file provided"})
 
@@ -408,17 +423,67 @@ async def predict(request: Request, file: UploadFile = File(...)):
         conf_percent = conf_score * 100
         logger.info(f"Model detected: {raw_category} -> Mapped to UI Category: {category} ({conf_percent:.2f}%)")
         
-        user = get_current_user(request)
+        # 1. SCAN -> DATA STORAGE FIX (Fixed 20 points)
+        points = 20
+        
         if user:
-            points = 10 if conf_percent > 70 else 5
+            # Update user stats
             user["points"] += points
             user["scans"] += 1
+            
+            now = datetime.utcnow()
+            today_str = now.strftime("%Y-%m-%d")
+            current_week = now.isocalendar()[1]
+            current_month = now.month
+            
             user["history"].insert(0, {
-                "date": "2024-03-21", # Mock date
-                "item": category,
+                "date": today_str,
+                "category": category,
                 "points": points
             })
+            
+            # Handle Challenges
+            if "challenges" not in user:
+                user["challenges"] = {
+                    "daily": {"target": 3, "progress": 0, "completed": False, "last_updated": today_str},
+                    "weekly": {"target": 15, "progress": 0, "completed": False, "last_updated_week": current_week},
+                    "monthly": {"target": 50, "progress": 0, "completed": False, "last_updated_month": current_month}
+                }
+            
+            challenges = user["challenges"]
+            
+            # Daily Reset
+            if challenges["daily"].get("last_updated") != today_str:
+                challenges["daily"] = {"target": 3, "progress": 0, "completed": False, "last_updated": today_str}
+            # Weekly Reset
+            if challenges["weekly"].get("last_updated_week") != current_week:
+                challenges["weekly"] = {"target": 15, "progress": 0, "completed": False, "last_updated_week": current_week}
+            # Monthly Reset
+            if challenges["monthly"].get("last_updated_month") != current_month:
+                challenges["monthly"] = {"target": 50, "progress": 0, "completed": False, "last_updated_month": current_month}
+                
+            # Increment & Check logic (ensure reward given only once)
+            for ch_type, config in challenges.items():
+                if config["progress"] < config["target"]:
+                    config["progress"] += 1
+                    if config["progress"] >= config["target"] and not config["completed"]:
+                        config["completed"] = True
+                        if ch_type == "daily":
+                            user["points"] += 20
+                        elif ch_type == "weekly":
+                            user["points"] += 100
+                        elif ch_type == "monthly":
+                            user["points"] += 500
+                            
             save_db(user_db)
+            
+            # 5. DEBUG LOGGING (TEMPORARY)
+            print("=========================================")
+            print(f"DEBUG: Scan successful for {user.get('email')}")
+            print(f"Updated Points: {user['points']}")
+            print(f"Updated Scans: {user['scans']}")
+            print(f"History Length: {len(user['history'])}")
+            print("=========================================")
 
         # Generate instructions and recycling status based on category
         instructions = "Dispose in general waste."
@@ -440,7 +505,7 @@ async def predict(request: Request, file: UploadFile = File(...)):
             "status": "success",
             "category": category,
             "confidence": round(conf_percent, 2),
-            "points": 10 if conf_percent > 70 else 5,
+            "points": points,
             "instructions": instructions,
             "recyclable": recyclable
         }
@@ -456,33 +521,103 @@ async def chat(request: ChatRequest):
         return JSONResponse(status_code=400, content={"status": "error", "message": str(e)})
 
 @app.get("/analytics")
-async def get_analytics(request: Request, range: str = Query("weekly")):
-    user = get_current_user(request)
-    if not user:
-        return JSONResponse(status_code=401, content={"status": "error", "message": "Not authenticated"})
+async def get_analytics(range: str = Query("weekly"), user: dict = Depends(get_current_user)):
+    try:
+        history = user.get("history", [])
         
-    # Mock data structure matching frontend expectations
-    mock_data = [
-        {"name": "Mon", "plastic": 4, "metal": 2, "organic": 10, "paper": 3},
-        {"name": "Tue", "plastic": 3, "metal": 1, "organic": 8, "paper": 4},
-        {"name": "Wed", "plastic": 5, "metal": 3, "organic": 12, "paper": 2},
-        {"name": "Thu", "plastic": 2, "metal": 1, "organic": 9, "paper": 5},
-        {"name": "Fri", "plastic": 6, "metal": 4, "organic": 11, "paper": 3},
-        {"name": "Sat", "plastic": 8, "metal": 5, "organic": 15, "paper": 6},
-        {"name": "Sun", "plastic": 7, "metal": 3, "organic": 13, "paper": 4},
-    ]
-    
-    return {
-        "status": "success", 
-        "data": mock_data, 
-        "stats": {
-            "total_waste": "42.5 kg", 
-            "recycling_rate": "78%",
-            "co2_saved": "12.8 kg",
-            "eco_points": "1,240"
+        categories_count = {}
+        
+        try:
+            sorted_history = sorted(history, key=lambda x: datetime.strptime(x.get("date", "2000-01-01"), "%Y-%m-%d"), reverse=True)
+        except:
+            sorted_history = history
+            
+        daily_entries = sorted_history[:7]
+        monthly_entries = sorted_history[:30]
+        
+        weekly_map = {}
+        for entry in sorted_history:
+            date_str = entry.get("date", "")
+            item = entry.get("category", entry.get("item", "Organic")).lower()
+            pts = entry.get("points", 0)
+            
+            if item not in categories_count:
+                categories_count[item] = 0
+            categories_count[item] += 1
+            
+            try:
+                dt = datetime.strptime(date_str, "%Y-%m-%d")
+                day_name = dt.strftime("%a")
+                if day_name not in weekly_map:
+                    weekly_map[day_name] = {"name": day_name, "plastic": 0, "organic": 0, "paper": 0, "metal": 0, "glass": 0, "cardboard": 0}
+                if item in weekly_map[day_name]:
+                    weekly_map[day_name][item] += 1
+                else:
+                    weekly_map[day_name]["organic"] += 1
+            except:
+                pass
+                
+        points_list = []
+        for entry in reversed(sorted_history):
+            date_str = entry.get("date", "")
+            if date_str:
+                points_list.append({"name": date_str, "points": entry.get("points", 0)})
+        
+        weekly_entries = list(weekly_map.values())
+        
+        total_scans = len(sorted_history)
+        total_points = sum(e.get("points",0) for e in sorted_history)
+        total_recyclable = sum(1 for e in sorted_history if e.get("category", e.get("item", "")).lower() in ["plastic", "metal", "paper", "glass", "cardboard"])
+        rate = f"{int((total_recyclable / total_scans) * 100)}%" if total_scans > 0 else "0%"
+
+        return {
+            "status": "success",
+            "daily": daily_entries,
+            "weekly": weekly_entries,
+            "monthly": monthly_entries,
+            "categories": categories_count,
+            "points": points_list,
+            "stats": {
+                "total_waste": f"{total_scans} Scans",
+                "recycling_rate": rate,
+                "co2_saved": f"{round(total_recyclable * 0.5, 1)} kg",
+                "eco_points": str(total_points)
+            }
         }
-    }
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"status": "error", "message": f"Server Error: {str(e)}"})
+
+@app.get("/leaderboard")
+async def get_leaderboard():
+    try:
+        users_list = []
+        for email, u in user_db["users"].items():
+            users_list.append({
+                "name": u.get("name", "Unknown"),
+                "points": u.get("points", 0),
+                "scans": u.get("scans", 0),
+                "avatar": u.get("avatar"),
+                "impact_level": u.get("rank", "Green Starter")
+            })
+        
+        # Sort by points descending
+        users_list.sort(key=lambda x: x["points"], reverse=True)
+        
+        # Assign numeric rank
+        for i, u in enumerate(users_list):
+            u["rank"] = i + 1
+            
+        return {"status": "success", "leaderboard": users_list}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"status": "error", "message": f"Server Error: {str(e)}"})
 
 if __name__ == "__main__":
     import uvicorn
+    # Log startup info clearly
+    print("\n" + "="*50)
+    print("GRINIFY BACKEND STARTING")
+    print("API Base URL: http://127.0.0.1:8000")
+    print("Health Check: http://127.0.0.1:8000/health")
+    print("="*50 + "\n")
+    
     uvicorn.run(app, host="0.0.0.0", port=8000)

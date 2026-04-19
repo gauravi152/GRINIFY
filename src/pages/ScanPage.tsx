@@ -5,8 +5,11 @@ import { ScanningOverlay } from '../components/scan/ScanningOverlay';
 import { DragDropZone } from '../components/scan/DragDropZone';
 import { Camera, X } from 'lucide-react';
 import { ChatbotWidget } from '../components/chat/ChatbotWidget';
+import { apiClient } from '../utils/apiClient';
+import { useAuth } from '../context/AuthContext';
 
 export const ScanPage: React.FC = () => {
+    const { refreshUser } = useAuth();
     const [isScanning, setIsScanning] = useState(false);
     const [scanResult, setScanResult] = useState<any>(null);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -125,16 +128,14 @@ export const ScanPage: React.FC = () => {
             const formData = new FormData();
             formData.append('file', blob, 'scan.jpg');
 
-            const apiResponse = await fetch('http://localhost:8000/predict', {
+            const token = localStorage.getItem('grinify_token');
+
+            const result = await apiClient('/predict', {
                 method: 'POST',
+                headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
                 body: formData,
+                timeout: 30000 // ML models can take longer to respond
             });
-
-            if (!apiResponse.ok) throw new Error('Backend prediction failed');
-
-            const result = await apiResponse.json();
-
-            if (result.error) throw new Error(result.error);
 
             setScanResult({
                 category: result.category,
@@ -146,6 +147,9 @@ export const ScanPage: React.FC = () => {
 
             // Persist for Map contextual search
             localStorage.setItem('lastScannedCategory', result.category);
+            
+            // Sync updated profile (points, scans, history)
+            await refreshUser();
         } catch (err: any) {
             console.error("Scan failed:", err);
             alert(`Scanning failed: ${err.message || 'Backend unreachable'}`);

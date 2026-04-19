@@ -13,7 +13,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const [theme, setTheme] = useState<Theme>('light');
 
     useEffect(() => {
-        const storedTheme = localStorage.getItem('grinify_theme') as Theme | null;
+        const storedTheme = localStorage.getItem('theme') as Theme | null;
         if (storedTheme) {
             setTheme(storedTheme);
         } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
@@ -22,10 +22,13 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }, []);
 
     useEffect(() => {
-        const root = window.document.documentElement;
-        root.classList.remove('light', 'dark');
-        root.classList.add(theme);
-        localStorage.setItem('grinify_theme', theme);
+        const root = document.documentElement;
+        if (theme === 'dark') {
+            root.classList.add('dark');
+        } else {
+            root.classList.remove('dark');
+        }
+        localStorage.setItem('theme', theme);
     }, [theme]);
 
     const toggleTheme = () => {

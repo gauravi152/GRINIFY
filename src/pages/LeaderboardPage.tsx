@@ -1,13 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Trophy, Crown, User, Medal, Share2, Check } from 'lucide-react';
+import { Trophy, Crown, Medal, Share2, Check } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuth } from '../context/AuthContext';
+import { apiClient } from '../utils/apiClient';
 
 interface LeaderboardUser {
     rank: number;
     name: string;
     points: number;
+    scans: number;
+    impact_level: string;
     avatar: string | null;
 }
 
@@ -40,7 +43,7 @@ const Avatar: React.FC<{ name: string; src: string | null; size?: number; classN
                 !src && colorClass,
                 className
             )}
-            style={{ width: size, height: size }}
+            style={{ width: size, height: size, flexShrink: 0 }}
         >
             {src ? (
                 <img src={src} alt={name} className="w-full h-full object-cover" />
@@ -55,26 +58,44 @@ const Avatar: React.FC<{ name: string; src: string | null; size?: number; classN
 
 export const LeaderboardPage: React.FC = () => {
     const [copied, setCopied] = useState(false);
+    const [leaderboardData, setLeaderboardData] = useState<LeaderboardUser[]>([]);
     const { user: currentUser } = useAuth();
 
-    const leaderboardData: LeaderboardUser[] = [
-        { rank: 1, name: 'EcoWarrior_22', points: 4850, avatar: null },
-        { rank: 2, name: 'GreenLife', points: 4210, avatar: null },
-        { rank: 3, name: 'SustainQueen', points: 3980, avatar: null },
-        { rank: 4, name: 'ForestGuardian', points: 3750, avatar: null },
-        { rank: 5, name: 'RecycleKing', points: 3420, avatar: null },
-    ];
+    useEffect(() => {
+        const fetchLeaderboard = async () => {
+            try {
+                const result = await apiClient('/leaderboard');
+                if (result.status === 'success' && Array.isArray(result.leaderboard)) {
+                    setLeaderboardData(result.leaderboard);
+                }
+            } catch (error) {
+                console.error("Failed to fetch leaderboard:", error);
+            }
+        };
+        fetchLeaderboard();
+        
+        // Polling optionally to keep it fresh
+        const interval = setInterval(fetchLeaderboard, 15000);
+        return () => clearInterval(interval);
+    }, []);
 
-    // Ensure current user is in the list
-    const isUserInTop5 = leaderboardData.some(u => u.name === currentUser?.name);
+    // Ensure current user is in the list visually
+    const isUserInList = leaderboardData.some(u => u.name === currentUser?.name);
     const displayData = [...leaderboardData];
-    if (!isUserInTop5 && currentUser) {
+    if (!isUserInList && currentUser) {
+        // Find their virtual rank based on points
+        const virtualRank = displayData.filter(u => u.points >= currentUser.points).length + 1;
         displayData.push({
-            rank: 42,
+            rank: virtualRank,
             name: currentUser.name,
-            points: currentUser.points,
+            points: currentUser.points || 0,
+            scans: currentUser.scans || 0,
+            impact_level: currentUser.rank || 'Explorer',
             avatar: currentUser.avatar || null
         });
+        displayData.sort((a, b) => b.points - a.points);
+        // re-rank
+        displayData.forEach((u, i) => u.rank = i + 1);
     }
 
     const podiumOrder = [1, 0, 2]; // Rank indices: 2, 1, 3
@@ -100,11 +121,17 @@ export const LeaderboardPage: React.FC = () => {
             {/* Podium Section */}
             <div className="flex flex-col md:flex-row items-end justify-center gap-6 md:gap-4 pt-10">
                 {podiumOrder.map((idx) => {
-                    const user = leaderboardData[idx];
+                    const user = displayData[idx];
                     if (!user) return null;
                     const isRank1 = user.rank === 1;
                     const isRank2 = user.rank === 2;
                     const isRank3 = user.rank === 3;
+                    const isMe = user.name === currentUser?.name;
+
+                    let rankIcon = null;
+                    if (isRank1) rankIcon = '🥇';
+                    if (isRank2) rankIcon = '🥈';
+                    if (isRank3) rankIcon = '🥉';
 
                     return (
                         <motion.div
@@ -112,9 +139,13 @@ export const LeaderboardPage: React.FC = () => {
                             initial={{ opacity: 0, y: 50 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ type: "spring", stiffness: 100, delay: 0.2 + idx * 0.1 }}
+                            whileHover={{ y: -5, scale: 1.02 }}
                             className={clsx(
-                                "flex flex-col items-center w-full md:w-64 p-6 rounded-[2.5rem] relative shadow-soft border transition-all hover:scale-[1.02] duration-300",
-                                isRank1 ? "bg-white border-yellow-200 z-10 md:-translate-y-8" : "bg-white/80 border-gray-100"
+                                "flex flex-col items-center w-full md:w-64 p-6 rounded-[2.5rem] relative shadow-soft border transition-all duration-300",
+                                isRank1 ? "bg-gradient-to-b from-yellow-50 to-white border-yellow-300 shadow-yellow-100/50 shadow-xl z-10 md:-translate-y-8" : 
+                                isRank2 ? "bg-gradient-to-b from-gray-50 to-white border-gray-300 shadow-gray-200/50 shadow-lg" : 
+                                "bg-gradient-to-b from-orange-50 to-white border-orange-200 shadow-orange-100/50 shadow-lg",
+                                isMe && "ring-4 ring-green-400"
                             )}
                         >
                             {isRank1 && (
@@ -137,26 +168,37 @@ export const LeaderboardPage: React.FC = () => {
                                         "ring-4",
                                         isRank1 ? "ring-yellow-400" : 
                                         isRank2 ? "ring-gray-300" : 
-                                        "ring-amber-600/40"
+                                        "ring-amber-500"
                                     )}
                                 />
                                 <div className={clsx(
-                                    "absolute -bottom-2 -right-2 w-10 h-10 rounded-full flex items-center justify-center font-black text-white shadow-lg",
+                                    "absolute -bottom-2 -right-2 w-10 h-10 rounded-full flex items-center justify-center font-black text-white shadow-lg text-lg",
                                     isRank1 ? "bg-yellow-400" : 
-                                    isRank2 ? "bg-gray-300 text-gray-700" : 
-                                    "bg-amber-600"
+                                    isRank2 ? "bg-gray-400" : 
+                                    "bg-amber-500"
                                 )}>
-                                    {user.rank}
+                                    #{user.rank}
                                 </div>
                             </div>
 
-                            <h3 className={clsx("mt-6 font-bold truncate w-full text-center", isRank1 ? "text-xl" : "text-lg")}>
-                                {user.name}
-                            </h3>
+                            <div className="flex items-center gap-2 mt-6">
+                                <h3 className={clsx("font-bold truncate text-center", isRank1 ? "text-xl" : "text-lg")}>
+                                    {user.name}
+                                </h3>
+                                {isMe && <span className="bg-green-100 text-green-600 text-xs font-bold px-2 py-0.5 rounded-full">You</span>}
+                            </div>
                             
-                            <div className="mt-2 flex items-center gap-1.5 py-1 px-4 bg-primary/10 rounded-full">
+                            <div className="text-xs font-semibold uppercase tracking-wider text-primary bg-primary/10 px-3 py-1 rounded-full mt-1 mb-1">
+                                {user.impact_level}
+                            </div>
+                            <div className="text-xs text-text-light font-medium mb-3 flex items-center gap-1">
+                                <span>{user.scans} Scans</span> 
+                                <span className="text-xl">{rankIcon}</span>
+                            </div>
+                            
+                            <div className="mt-auto flex items-center gap-1.5 py-1.5 px-5 bg-primary/10 rounded-full">
                                 <Trophy className="w-4 h-4 text-primary" />
-                                <span className="font-black text-primary">{user.points.toLocaleString()}</span>
+                                <span className="font-black text-primary text-lg">{user.points.toLocaleString()}</span>
                             </div>
                         </motion.div>
                     );
@@ -172,10 +214,10 @@ export const LeaderboardPage: React.FC = () => {
             >
                 <div className="px-8 py-5 bg-gray-50/50 border-b border-gray-100 flex justify-between items-center text-xs font-bold uppercase tracking-widest text-text-light">
                     <div className="flex items-center gap-12">
-                        <span className="w-8">Rank</span>
+                        <span className="w-12 text-center">Rank</span>
                         <span>Warrior</span>
                     </div>
-                    <span>Points</span>
+                    <span>Score</span>
                 </div>
 
                 <div className="divide-y divide-gray-50">
@@ -188,34 +230,47 @@ export const LeaderboardPage: React.FC = () => {
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: 0.7 + index * 0.05 }}
                                 className={clsx(
-                                    "flex items-center justify-between px-8 py-4 transition-all hover:bg-gray-50 group",
-                                    isMe ? "bg-green-50/80" : ""
+                                    "flex flex-col sm:flex-row items-start sm:items-center justify-between px-8 py-6 transition-all hover:bg-gray-50 group",
+                                    isMe ? "bg-green-50/70 shadow-inner" : ""
                                 )}
                             >
-                                <div className="flex items-center gap-10">
-                                    <span className="font-black text-gray-300 group-hover:text-text-light transition-colors w-8 text-lg">
-                                        {user.rank}
+                                <div className="flex items-center gap-8 w-full sm:w-auto">
+                                    <span className="font-black text-gray-400 group-hover:text-primary transition-colors w-8 text-xl text-center">
+                                        #{user.rank}
                                     </span>
                                     <div className="flex items-center gap-4">
-                                        <Avatar name={user.name} src={user.avatar} size={48} />
-                                        <span className={clsx(
-                                            "font-bold text-lg",
-                                            isMe ? "text-green-700" : "text-text"
-                                        )}>
-                                            {user.name}
-                                            {isMe && <span className="ml-2 text-xs font-medium text-green-600 bg-green-100 px-2 py-0.5 rounded-full">(You)</span>}
-                                        </span>
+                                        <Avatar name={user.name} src={user.avatar} size={50} />
+                                        <div className="flex flex-col">
+                                            <span className={clsx(
+                                                "font-bold text-lg flex items-center gap-2",
+                                                isMe ? "text-green-700" : "text-text"
+                                            )}>
+                                                {user.name}
+                                                {isMe && <span className="text-xs font-bold text-green-600 bg-green-200/50 px-2.5 py-0.5 rounded-full uppercase tracking-wide">You</span>}
+                                            </span>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded uppercase tracking-wider">{user.impact_level}</span>
+                                                <span className="text-xs font-medium text-gray-500 flex items-center gap-1">
+                                                    • {user.scans} items scanned
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="bg-primary/5 p-2 rounded-xl">
+                                <div className="flex items-center gap-2 mt-4 sm:mt-0 self-end sm:self-auto bg-gray-50/80 px-4 py-2 rounded-2xl group-hover:bg-white transition-colors border border-transparent group-hover:border-gray-100 group-hover:shadow-sm">
+                                    <div className="bg-primary/10 p-2 rounded-xl">
                                         <Medal className="w-5 h-5 text-primary" />
                                     </div>
-                                    <span className="font-black text-xl text-text">{user.points.toLocaleString()}</span>
+                                    <span className="font-black text-2xl text-text tracking-tight">{user.points.toLocaleString()}</span>
                                 </div>
                             </motion.div>
                         );
                     })}
+                    {displayData.slice(3).length === 0 && (
+                        <div className="py-12 text-center text-text-light font-medium">
+                            No other warriors found. Keep scanning to invite others!
+                        </div>
+                    )}
                 </div>
             </motion.div>
 

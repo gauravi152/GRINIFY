@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, Send, Bot, Loader2 } from 'lucide-react';
+import { apiClient } from '../../utils/apiClient';
 
 interface Message {
     id: string;
@@ -32,7 +33,7 @@ export const ChatbotWidget: React.FC = () => {
         setIsLoading(true);
 
         try {
-            const response = await fetch('http://localhost:8000/chat', {
+            const data = await apiClient('/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -40,15 +41,14 @@ export const ChatbotWidget: React.FC = () => {
                 body: JSON.stringify({ query: input }),
             });
 
-            const data = await response.json();
             const botMsg: Message = {
                 id: (Date.now() + 1).toString(),
                 text: data.response || "Sorry, I'm having trouble connecting to the brain center.",
                 sender: 'bot'
             };
             setMessages(prev => [...prev, botMsg]);
-        } catch (err) {
-            console.error("Chat failed:", err);
+        } catch (err: any) {
+            console.error("Chat failed:", err.message);
             const botMsg: Message = {
                 id: (Date.now() + 1).toString(),
                 text: "I'm offline right now, but you can try asking about plastic, paper or how to scan!",

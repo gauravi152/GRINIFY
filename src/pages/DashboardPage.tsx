@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, type Variants } from 'framer-motion';
 import { StatCard } from '../components/dashboard/StatCard';
 import { ActivityFeed } from '../components/dashboard/ActivityFeed';
+import { ChallengesWidget } from '../components/dashboard/ChallengesWidget';
 import { Leaf, Award, Recycle, TrendingUp, ArrowRight, Check, Share2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
@@ -144,6 +145,9 @@ export const Dashboard: React.FC = () => {
                         <Leaf className="absolute right-[-20px] bottom-[-20px] w-56 h-56 text-white/10 rotate-12 transition-transform duration-700 group-hover:rotate-[20deg] group-hover:scale-110" />
                         <div className="absolute top-[-50px] right-[-50px] w-64 h-64 bg-white/5 rounded-full blur-3xl" />
                     </div>
+
+                    {/* Challenges Section */}
+                    <ChallengesWidget />
                 </motion.div>
 
                 {/* Right Sidebar (1 column) */}

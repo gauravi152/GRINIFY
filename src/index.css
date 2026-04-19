@@ -8,7 +8,7 @@
   }
 
   body {
-    @apply bg-background text-text font-sans antialiased selection:bg-primary/30 selection:text-primary;
+    @apply bg-background text-text font-sans antialiased selection:bg-primary/30 selection:text-primary transition-colors duration-300;
   }
 
   h1,
@@ -35,7 +35,39 @@
   }
 }
 
-/* Custom Scrollbar for a cleaner look */
+/* Dark Mode Universal Overrides */
+html.dark body {
+  @apply bg-dark-bg text-dark-text;
+}
+
+html.dark .bg-white {
+  @apply bg-dark-surface border-gray-800;
+}
+
+html.dark .bg-gray-50 {
+  @apply bg-[#1e211d] border-gray-800;
+}
+
+html.dark .text-text {
+  @apply text-white;
+}
+
+html.dark .text-text-light {
+  @apply text-gray-400;
+}
+
+html.dark .border-gray-100, 
+html.dark .border-gray-200 {
+  @apply border-gray-800;
+}
+
+html.dark .shadow-soft, 
+html.dark .shadow-card, 
+html.dark .shadow-sm {
+  box-shadow: 0 4px 20px -5px rgba(0,0,0,0.4);
+}
+
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
 }

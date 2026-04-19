@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { apiClient } from '../utils/apiClient';
 
 interface User {
     name: string;
@@ -21,10 +22,9 @@ interface AuthContextType {
     logout: () => void;
     updateProfile: (data: { name: string, email: string, location?: string, gender?: string, birthdate?: string }) => Promise<void>;
     uploadAvatar: (file: File) => Promise<void>;
+    refreshUser: () => Promise<void>;
     isLoading: boolean;
 }
-
-const API_BASE_URL = 'http://localhost:8000';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -33,34 +33,40 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        const initAuth = async () => {
-            const token = localStorage.getItem('grinify_token');
-            if (token) {
-                try {
-                    const response = await fetch(`${API_BASE_URL}/user/profile`, {
-                        headers: {
-                            'Authorization': `Bearer ${token}`
-                        }
-                    });
-                    if (!response.ok) {
-                        if (response.status === 401) {
-                            throw new Error('Session expired');
-                        }
-                        throw new Error('Failed to fetch user profile');
-                    }
-                    const data = await response.json();
-                    if (data.status === 'success') {
-                        setUser(data.user);
-                        setIsAuthenticated(true);
-                    } else {
-                        localStorage.removeItem('grinify_token');
-                    }
-                } catch (err) {
-                    console.error("Auth hydration failed:", err);
+    const refreshUser = async () => {
+        const token = localStorage.getItem('grinify_token');
+        if (token) {
+            try {
+                const data = await apiClient('/user/profile', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (data.status === 'success') {
+                    setUser(data.user);
+                    setIsAuthenticated(true);
+                } else {
                     localStorage.removeItem('grinify_token');
                 }
+            } catch (err) {
+                console.error("Auth hydration failed:", err);
+                localStorage.removeItem('grinify_token');
             }
+        }
+    };
+
+    useEffect(() => {
+        /**
+         * Verifies backend health and hydates auth state from token.
+         */
+        const initAuth = async () => {
+            // Proactive health check logic as requested by user
+            try {
+                const health = await apiClient('/health', { timeout: 3000 });
+                console.log("[Auth] Backend Health Check:", health.status === 'ok' ? 'ONLINE' : 'UNSTABLE');
+            } catch (err) {
+                console.error("[Auth] Backend Health Check FAILED. The server might be offline.");
+            }
+
+            await refreshUser();
             setIsLoading(false);
         };
         initAuth();
@@ -69,18 +75,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const login = async (email: string, password: string) => {
         setIsLoading(true);
         try {
-            const response = await fetch(`${API_BASE_URL}/auth/login`, {
+            // Using logic with retries: apiClient handles the "Failed to fetch" conversion
+            const data = await apiClient('/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({ email, password }),
+                retries: 2 // Automatically retry twice on network failure
             });
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || `Login failed (${response.status})`);
-            }
-
-            const data = await response.json();
             if (data.status === 'success') {
                 setUser(data.user);
                 setIsAuthenticated(true);
@@ -88,10 +90,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             } else {
                 throw new Error(data.message || 'Login failed');
             }
-        } catch (err) {
-            console.error("Login failed:", err);
-            const errorMessage = err instanceof Error ? err.message : 'Failed to connect to server. Please ensure the backend is running.';
-            throw new Error(errorMessage);
+        } catch (err: any) {
+            console.error("Login attempt failed:", err.message);
+            throw err; // error msg is already mapped to user-friendly version in apiClient
         } finally {
             setIsLoading(false);
         }
@@ -100,18 +101,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const signup = async (name: string, email: string, password: string) => {
         setIsLoading(true);
         try {
-            const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+            const data = await apiClient('/auth/signup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, email, password })
             });
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || `Signup failed (${response.status})`);
-            }
-
-            const data = await response.json();
             if (data.status === 'success') {
                 setUser(data.user);
                 setIsAuthenticated(true);
@@ -119,10 +114,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             } else {
                 throw new Error(data.message || 'Signup failed');
             }
-        } catch (err) {
-            console.error("Signup failed:", err);
-            const errorMessage = err instanceof Error ? err.message : 'Failed to connect to server. Please ensure the backend is running.';
-            throw new Error(errorMessage);
+        } catch (err: any) {
+            console.error("Signup attempt failed:", err.message);
+            throw err;
         } finally {
             setIsLoading(false);
         }
@@ -138,7 +132,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const updateProfile = async (data: { name: string, email: string, location?: string, gender?: string, birthdate?: string }) => {
         const token = localStorage.getItem('grinify_token');
         try {
-            const response = await fetch(`${API_BASE_URL}/profile`, {
+            const result = await apiClient('/profile', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -146,9 +140,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 },
                 body: JSON.stringify(data)
             });
-            if (!response.ok) throw new Error('Failed to update profile');
-
-            const result = await response.json();
+            
             if (result.status === 'success') {
                 setUser(result.user);
             } else {
@@ -166,7 +158,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         formData.append('file', file);
 
         try {
-            const response = await fetch(`${API_BASE_URL}/profile/upload-image`, {
+            // Note: FormData handles its own boundary headers, so don't set Content-Type manually
+            const data = await apiClient('/profile/upload-image', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -174,9 +167,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 body: formData,
             });
 
-            if (!response.ok) throw new Error('Upload failed');
-
-            const data = await response.json();
             if (data.status === 'success') {
                 setUser(prev => prev ? { ...prev, avatar: data.avatar } : null);
             } else {
@@ -189,7 +179,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     return (
-        <AuthContext.Provider value={{ user, isAuthenticated, login, signup, logout, updateProfile, uploadAvatar, isLoading }}>
+        <AuthContext.Provider value={{ user, isAuthenticated, login, signup, logout, updateProfile, uploadAvatar, refreshUser, isLoading }}>
             {children}
         </AuthContext.Provider>
     );

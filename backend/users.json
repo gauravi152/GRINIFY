@@ -26,7 +26,27 @@
                     "points": 10
                 }
             ],
-            "avatar": "https://ui-avatars.com/api/?name=User+One&background=8A9A5B&color=fff"
+            "avatar": "https://ui-avatars.com/api/?name=User+One&background=8A9A5B&color=fff",
+            "challenges": {
+                "daily": {
+                    "target": 3,
+                    "progress": 0,
+                    "completed": false,
+                    "last_updated": "2026-04-18"
+                },
+                "weekly": {
+                    "target": 15,
+                    "progress": 0,
+                    "completed": false,
+                    "last_updated_week": 16
+                },
+                "monthly": {
+                    "target": 50,
+                    "progress": 0,
+                    "completed": false,
+                    "last_updated_month": 4
+                }
+            }
         },
         "test2_0c45@example.com": {
             "name": "User Two",
@@ -54,7 +74,27 @@
                     "points": 10
                 }
             ],
-            "avatar": "https://ui-avatars.com/api/?name=User+Two&background=8A9A5B&color=fff"
+            "avatar": "https://ui-avatars.com/api/?name=User+Two&background=8A9A5B&color=fff",
+            "challenges": {
+                "daily": {
+                    "target": 3,
+                    "progress": 0,
+                    "completed": false,
+                    "last_updated": "2026-04-18"
+                },
+                "weekly": {
+                    "target": 15,
+                    "progress": 0,
+                    "completed": false,
+                    "last_updated_week": 16
+                },
+                "monthly": {
+                    "target": 50,
+                    "progress": 0,
+                    "completed": false,
+                    "last_updated_month": 4
+                }
+            }
         },
         "gauravimestry0@gmail.com": {
             "name": "Gauravi Mestry",
@@ -62,10 +102,30 @@
             "location": "Earth",
             "gender": "Not Specified",
             "birthdate": "2000-01-01",
-            "points": 1240,
-            "scans": 42,
+            "points": 1300,
+            "scans": 46,
             "rank": "Gold Explorer",
             "history": [
+                {
+                    "date": "2026-04-18",
+                    "category": "Metal",
+                    "points": 20
+                },
+                {
+                    "date": "2026-04-18",
+                    "item": "Metal",
+                    "points": 20
+                },
+                {
+                    "date": "2024-03-21",
+                    "item": "Cardboard",
+                    "points": 10
+                },
+                {
+                    "date": "2024-03-21",
+                    "item": "Metal",
+                    "points": 10
+                },
                 {
                     "date": "2024-03-20",
                     "item": "Plastic Bottle",
@@ -83,7 +143,27 @@
                 }
             ],
             "avatar": "https://ui-avatars.com/api/?name=Grinify+Member&background=8A9A5B&color=fff",
-            "password": "$2b$12$oDAHMHX7lAB8HesoENz6..XwIpAnTpZWAE6uL8Nk2UJJ34dsN.HUu"
+            "password": "$2b$12$oDAHMHX7lAB8HesoENz6..XwIpAnTpZWAE6uL8Nk2UJJ34dsN.HUu",
+            "challenges": {
+                "daily": {
+                    "target": 3,
+                    "progress": 2,
+                    "completed": false,
+                    "last_updated": "2026-04-18"
+                },
+                "weekly": {
+                    "target": 15,
+                    "progress": 2,
+                    "completed": false,
+                    "last_updated_week": 16
+                },
+                "monthly": {
+                    "target": 50,
+                    "progress": 2,
+                    "completed": false,
+                    "last_updated_month": 4
+                }
+            }
         },
         "test_analytics@example.com": {
             "name": "Analytics Tester",
@@ -111,7 +191,27 @@
                     "points": 10
                 }
             ],
-            "avatar": "https://ui-avatars.com/api/?name=Analytics+Tester&background=8A9A5B&color=fff"
+            "avatar": "https://ui-avatars.com/api/?name=Analytics+Tester&background=8A9A5B&color=fff",
+            "challenges": {
+                "daily": {
+                    "target": 3,
+                    "progress": 0,
+                    "completed": false,
+                    "last_updated": "2026-04-18"
+                },
+                "weekly": {
+                    "target": 15,
+                    "progress": 0,
+                    "completed": false,
+                    "last_updated_week": 16
+                },
+                "monthly": {
+                    "target": 50,
+                    "progress": 0,
+                    "completed": false,
+                    "last_updated_month": 4
+                }
+            }
         },
         "testuser@example.com": {
             "name": "Test User",
@@ -140,7 +240,27 @@
                     "points": 10
                 }
             ],
-            "avatar": "https://ui-avatars.com/api/?name=Test+User&background=8A9A5B&color=fff"
+            "avatar": "https://ui-avatars.com/api/?name=Test+User&background=8A9A5B&color=fff",
+            "challenges": {
+                "daily": {
+                    "target": 3,
+                    "progress": 0,
+                    "completed": false,
+                    "last_updated": "2026-04-18"
+                },
+                "weekly": {
+                    "target": 15,
+                    "progress": 0,
+                    "completed": false,
+                    "last_updated_week": 16
+                },
+                "monthly": {
+                    "target": 50,
+                    "progress": 0,
+                    "completed": false,
+                    "last_updated_month": 4
+                }
+            }
         },
         "tester@example.com": {
             "name": "Pipeline Tester",
@@ -209,7 +329,76 @@
                     "points": 10
                 }
             ],
-            "avatar": "https://ui-avatars.com/api/?name=Pipeline+Tester&background=8A9A5B&color=fff"
+            "avatar": "https://ui-avatars.com/api/?name=Pipeline+Tester&background=8A9A5B&color=fff",
+            "challenges": {
+                "daily": {
+                    "target": 3,
+                    "progress": 0,
+                    "completed": false,
+                    "last_updated": "2026-04-18"
+                },
+                "weekly": {
+                    "target": 15,
+                    "progress": 0,
+                    "completed": false,
+                    "last_updated_week": 16
+                },
+                "monthly": {
+                    "target": 50,
+                    "progress": 0,
+                    "completed": false,
+                    "last_updated_month": 4
+                }
+            }
+        },
+        "test1_292c@example.com": {
+            "name": "Updated User One",
+            "email": "test1_292c@example.com",
+            "password": "$2b$12$X73RwiRN7p0Mz85AU0uqEuuaEJm0No4CLVLghHY/hdwPltwY6ZzUm",
+            "location": "New York",
+            "gender": null,
+            "birthdate": null,
+            "points": 1240,
+            "scans": 42,
+            "rank": "Gold Explorer",
+            "history": [
+                {
+                    "date": "2024-03-20",
+                    "item": "Plastic Bottle",
+                    "points": 10
+                },
+                {
+                    "date": "2024-03-19",
+                    "item": "Paper Box",
+                    "points": 5
+                },
+                {
+                    "date": "2024-03-18",
+                    "item": "Metal Can",
+                    "points": 10
+                }
+            ],
+            "avatar": "https://ui-avatars.com/api/?name=User+One&background=8A9A5B&color=fff",
+            "challenges": {
+                "daily": {
+                    "target": 3,
+                    "progress": 0,
+                    "completed": false,
+                    "last_updated": "2026-04-18"
+                },
+                "weekly": {
+                    "target": 15,
+                    "progress": 0,
+                    "completed": false,
+                    "last_updated_week": 16
+                },
+                "monthly": {
+                    "target": 50,
+                    "progress": 0,
+                    "completed": false,
+                    "last_updated_month": 4
+                }
+            }
         }
     },
     "sessions": {
