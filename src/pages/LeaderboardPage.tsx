@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, Crown, Medal, Share2, Check } from 'lucide-react';
-import { clsx } from 'clsx';
+import clsx from 'clsx';
 import { useAuth } from '../context/AuthContext';
 import { apiClient } from '../utils/apiClient';
 
@@ -80,20 +80,24 @@ export const LeaderboardPage: React.FC = () => {
     }, []);
 
     // Ensure current user is in the list visually
-    const isUserInList = leaderboardData.some(u => u.name === currentUser?.name);
+    const isUserInList = Boolean(currentUser?.name && leaderboardData.some(u => u.name === currentUser.name));
     const displayData = [...leaderboardData];
-    if (!isUserInList && currentUser) {
+    
+    if (!isUserInList && currentUser?.name) {
         // Find their virtual rank based on points
-        const virtualRank = displayData.filter(u => u.points >= currentUser.points).length + 1;
+        const userPoints = currentUser.points ?? 0;
+        const virtualRank = displayData.filter(u => (u.points ?? 0) >= userPoints).length + 1;
+        
         displayData.push({
             rank: virtualRank,
             name: currentUser.name,
-            points: currentUser.points || 0,
-            scans: currentUser.scans || 0,
+            points: userPoints,
+            scans: currentUser.scans ?? 0,
             impact_level: currentUser.rank || 'Explorer',
             avatar: currentUser.avatar || null
         });
-        displayData.sort((a, b) => b.points - a.points);
+        
+        displayData.sort((a, b) => (b.points ?? 0) - (a.points ?? 0));
         // re-rank
         displayData.forEach((u, i) => u.rank = i + 1);
     }
@@ -198,7 +202,7 @@ export const LeaderboardPage: React.FC = () => {
                             
                             <div className="mt-auto flex items-center gap-1.5 py-1.5 px-5 bg-primary/10 rounded-full">
                                 <Trophy className="w-4 h-4 text-primary" />
-                                <span className="font-black text-primary text-lg">{user.points.toLocaleString()}</span>
+                                <span className="font-black text-primary text-lg">{(user.points ?? 0).toLocaleString()}</span>
                             </div>
                         </motion.div>
                     );
@@ -261,7 +265,7 @@ export const LeaderboardPage: React.FC = () => {
                                     <div className="bg-primary/10 p-2 rounded-xl">
                                         <Medal className="w-5 h-5 text-primary" />
                                     </div>
-                                    <span className="font-black text-2xl text-text tracking-tight">{user.points.toLocaleString()}</span>
+                                    <span className="font-black text-2xl text-text tracking-tight">{(user.points ?? 0).toLocaleString()}</span>
                                 </div>
                             </motion.div>
                         );
