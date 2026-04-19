@@ -102,10 +102,15 @@
             "location": "Earth",
             "gender": "Not Specified",
             "birthdate": "2000-01-01",
-            "points": 1300,
-            "scans": 46,
+            "points": 1320,
+            "scans": 47,
             "rank": "Gold Explorer",
             "history": [
+                {
+                    "date": "2026-04-19",
+                    "category": "Cardboard",
+                    "points": 20
+                },
                 {
                     "date": "2026-04-18",
                     "category": "Metal",
@@ -147,19 +152,19 @@
             "challenges": {
                 "daily": {
                     "target": 3,
-                    "progress": 2,
+                    "progress": 1,
                     "completed": false,
-                    "last_updated": "2026-04-18"
+                    "last_updated": "2026-04-19"
                 },
                 "weekly": {
                     "target": 15,
-                    "progress": 2,
+                    "progress": 3,
                     "completed": false,
                     "last_updated_week": 16
                 },
                 "monthly": {
                     "target": 50,
-                    "progress": 2,
+                    "progress": 3,
                     "completed": false,
                     "last_updated_month": 4
                 }
